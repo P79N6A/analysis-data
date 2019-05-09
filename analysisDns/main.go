@@ -126,6 +126,7 @@ func main() {
 		target, err := getTargetAddress(record.TargetAddress)
 		if err != nil {
 			addNoPortAnalizyData(target, record.UserDevice)
+			continue
 		}
 		addAnalizyData(target, record.UserDevice)
 	}

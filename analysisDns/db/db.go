@@ -7,6 +7,7 @@ import (
 
 	"github.com/astaxie/beego/orm"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/analysis-data/analysisDns/common"
 )
 
 type Records struct {
@@ -42,8 +43,13 @@ func QueryData(from, to time.Time) (*Records, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return &Records{Records: records}, nil
+	
+	re := Records{Records: records}
+	err = common.WriteToFile("records.json", re)
+	if err != nil {
+		return nil, err
+	}
+	return &re, nil
 }
 
 func ReadRecods(filePath string) (*Records, error) {
