@@ -20,10 +20,18 @@ type Record struct {
 
 func init() {
 	orm.RegisterDriver("mysql", orm.DRMySQL)
-	orm.RegisterDataBase("default", "mysql", "root:123456@tcp(221.228.197.195:3307)/climb?charset=utf8")
+	orm.RegisterDataBase("default", "mysql", "")
 }
 
-var querySQL = "SELECT T.userDevice, T.targetAddress FROM ( SELECT DISTINCT ( userDevice ) FROM tp_share_conn WHERE userDevice != '' AND UNIX_TIMESTAMP(createTime) >= ? and UNIX_TIMESTAMP(createTime) <= ?) origin LEFT JOIN ( SELECT * FROM tp_share_conn WHERE closeReason = 'dns-error' AND targetAddress != '' AND UNIX_TIMESTAMP(createTime) >= ? and UNIX_TIMESTAMP(createTime) <= ?) T ON T.userDevice = origin.userDevice order by T.userDevice"
+var createTableSQl = "CREATE tp_share_conn_back like tp_share_conn"
+var querySQL = "SELECT T.userDevice, T.targetAddress FROM ( SELECT DISTINCT ( userDevice ) FROM `tp_share_conn_back20190424-20190430` WHERE userDevice != '' AND UNIX_TIMESTAMP(createTime) >= ? and UNIX_TIMESTAMP(createTime) <= ?) origin LEFT JOIN ( SELECT * FROM tp_share_conn WHERE closeReason = 'dns-error' AND targetAddress != '' AND UNIX_TIMESTAMP(createTime) >= ? and UNIX_TIMESTAMP(createTime) <= ?) T ON T.userDevice = origin.userDevice order by T.userDevice"
+
+// func CreateDataBack(from, to time.Time) error {
+// 	o := orm.NewOrm()
+// 	o.Using("climb")
+
+// 	o.
+// }
 
 func QueryData(from, to time.Time) (*Records, error) {
 	o := orm.NewOrm()

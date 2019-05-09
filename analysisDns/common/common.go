@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -46,6 +47,25 @@ func ExchangeStringToTime(timeString string) (time.Time, error) {
 
 	timeTime = time.Date(year, time.Month(month), day, hour, 0, 0, 0, timeTime.Location())
 	return timeTime, nil
+}
+
+func WriteToFile(pathFile string, data interface{}) error {
+	_, err := os.Stat(pathFile)
+	if err != nil {
+		if os.IsExist(err) {
+			os.Remove(pathFile)
+		}
+	}
+	f, err := os.Create(pathFile)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	byt, _ := json.Marshal(data)
+	f.Write(byt)
+	return nil
 }
 
 func WriteDataToFile(pathFile string, data []AnalizyData) error {

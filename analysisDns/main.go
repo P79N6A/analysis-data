@@ -11,12 +11,25 @@ import (
 	"github.com/analysis-data/analysisDns/db"
 )
 
-func getTargetAddressWithOutPort(targetAddress string) (string, error) {
+func getTargetAddress(targetAddress string) (string, error) {
 	array := strings.Split(targetAddress, ":")
-	return array[0], nil
+	if len(array) != 2 {
+		return targetAddress, fmt.Errorf("unknow address " + targetAddress)
+	}
+
+	switch array[1]{
+	case "443":
+		return "https://"+array[0], nil
+	case "80", "8080":
+		return "http://"+array[0], nil
+	}
+	return targetAddress, fmt.Errorf("unknow port " + targetAddress)
 }
 
-var analizyDatas = map[string]*common.AnalizyData{}
+var (
+	analizyDatas = map[string]*common.AnalizyData{}
+	noPortDatas = map[string]*common.AnalizyData{}
+)
 
 func addAnalizyData(targetAddress string, userdevice string) error {
 	if data, ok := analizyDatas[targetAddress]; ok {
@@ -38,6 +51,26 @@ func addAnalizyData(targetAddress string, userdevice string) error {
 	return nil
 }
 
+func addNoPortAnalizyData(targetAddress string, userdevice string) error {
+	if data, ok := noPortDatas[targetAddress]; ok {
+		data.Count++
+		for _, device := range data.UserDevices {
+			if device == userdevice {
+				return nil
+			}
+		}
+		data.UserDevices = append(data.UserDevices, userdevice)
+	} else {
+		data := common.AnalizyData{
+			TargetAddress: targetAddress,
+			Count:         1,
+			UserDevices:   []string{userdevice},
+		}
+		noPortDatas[targetAddress] = &data
+	}
+	return nil
+}
+
 func isCurrentWebAddress(targetAddress string) bool {
 	if strings.Index(targetAddress, ".") > 0 {
 		return true
@@ -51,6 +84,7 @@ func findData(from, to time.Time) error {
 
 func main() {
 	analizyDatas = map[string]*common.AnalizyData{}
+	noPortDatas = map[string]*common.AnalizyData{}
 
 	cmd := "read"
 	if len(os.Args) > 1 {
@@ -89,10 +123,14 @@ func main() {
 	}
 
 	for _, record := range records.Records {
-		target, _ := getTargetAddressWithOutPort(record.TargetAddress)
+		target, err := getTargetAddress(record.TargetAddress)
+		if err != nil {
+			addNoPortAnalizyData(target, record.UserDevice)
+		}
 		addAnalizyData(target, record.UserDevice)
 	}
 
+	common.WriteToFile("noPortRecord.json", noPortDatas)
 	var data []common.AnalizyData
 
 	total := 0
@@ -101,8 +139,10 @@ func main() {
 		total += value.Count
 		if !isCurrentWebAddress(key) {
 			errWebAddressCount += value.Count
+		} else {
+			data = append(data, *value)
 		}
-		data = append(data, *value)
+		
 		// fmt.Printf("%-50s %d\t ", key, value.count)
 		// for index, userDevice := range value.userDevices {
 		// 	fmt.Printf("%s", userDevice)
