@@ -17,18 +17,18 @@ func getTargetAddress(targetAddress string) (string, error) {
 		return targetAddress, fmt.Errorf("unknow address " + targetAddress)
 	}
 
-	switch array[1]{
+	switch array[1] {
 	case "443":
-		return "https://"+array[0], nil
+		return "https://" + array[0], nil
 	case "80", "8080":
-		return "http://"+array[0], nil
+		return "http://" + array[0], nil
 	}
 	return targetAddress, fmt.Errorf("unknow port " + targetAddress)
 }
 
 var (
 	analizyDatas = map[string]*common.AnalizyData{}
-	noPortDatas = map[string]*common.AnalizyData{}
+	noPortDatas  = map[string]*common.AnalizyData{}
 )
 
 func addAnalizyData(targetAddress string, userdevice string) error {
@@ -143,7 +143,7 @@ func main() {
 		} else {
 			data = append(data, *value)
 		}
-		
+
 		// fmt.Printf("%-50s %d\t ", key, value.count)
 		// for index, userDevice := range value.userDevices {
 		// 	fmt.Printf("%s", userDevice)

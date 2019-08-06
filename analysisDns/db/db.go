@@ -21,7 +21,7 @@ type Record struct {
 
 func init() {
 	orm.RegisterDriver("mysql", orm.DRMySQL)
-	orm.RegisterDataBase("default", "mysql", "")
+	orm.RegisterDataBase("default", "mysql", "cliUsr:CLiE^R#(WW&%A9QEDp201252*92VPusS#$8203t@tcp(climbvpn.cbrhwddmnfax.ap-southeast-1.rds.amazonaws.com:33061)/climb?charset=utf8")
 }
 
 var createTableSQl = "CREATE tp_share_conn_back like tp_share_conn"
