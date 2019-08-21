@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	// "encoding/json"
 	"fmt"
 	"github.com/analysis-data/analysisMail/common"
 	"github.com/analysis-data/analysisMail/db"
@@ -92,8 +92,8 @@ func process() {
 
 	}
 
-	byt, _ := json.Marshal(analysisData)
-	fmt.Println(string(byt[:]))
+	// byt, _ := json.Marshal(analysisData)
+	// fmt.Println(string(byt[:]))
 
 	filePath := "userData" + common.TimeFormatDate(now) + ".xls"
 	err = common.WriteDataToFile(filePath, analysisData)
@@ -122,6 +122,7 @@ func analysisSeesionData(date string, datas []common.ClientSessionData, dbHandle
 		if !ok {
 			var connAnalysisData []common.ClientConnAnalysisData
 			var connData []common.ClientConnData
+			fmt.Println("start query ", "tp_client_conn"+date, "session: ", tempData.ID)
 			err := dbHandle.QueryClientConnDataByID("tp_client_conn"+date, tempData.ID, &connData)
 			if err == nil {
 				connAnalysisData = analysisConnData(connData)
