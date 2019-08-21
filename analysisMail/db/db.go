@@ -4,10 +4,6 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
-	"strings"
-	"time"
-
-	"github.com/analysis-data/analysisMail/common"
 )
 
 var SQLStr = `SELECT
@@ -23,7 +19,15 @@ FROM
 SELECT
 	userName,
 	deviceid,
-	(case when loginType = 'guest' then '是' else '否' end) as isGuest,
+	(case WHEN loginType = 'facebook' 
+	OR loginType = 'google' 
+	OR loginType = 'mail' 
+	OR loginType = 'login_facebook' 
+	OR loginType = 'login_google' 
+	OR loginType = 'login_mail' THEN
+		'否' ELSE '是' 
+	END 
+	) AS isGuest,
 	countryZh,
 	appVersion,
 	pkgName 
@@ -112,16 +116,41 @@ func RegisterDB(runMode string) (*GormInterface, error) {
 	db.DB().SetMaxIdleConns(maxIdle)
 	db.DB().SetMaxOpenConns(maxConn)
 
+	// 关闭复数表名，如果设置为true，`User`表的表名就会是`user`，而不是`users`
+	db.SingularTable(true)
+
 	return &GormInterface{gormDB: db}, nil
 }
 
-func (db *GormInterface) Query(startTime time.Time, data interface{}) error {
-	queryTime := time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 0, 0, 0, 0, startTime.Location())
-	fmt.Println("query time: ", common.TimeFormat(queryTime))
+func (db *GormInterface) Query(startTime int64, endTime int64, data interface{}) error {
+	dbTemp := db.gormDB.Raw(SQLStr, startTime, endTime, startTime, endTime).Scan(data)
+	if dbTemp.Error != nil {
+		return dbTemp.Error
+	}
+	return nil
+}
 
-	preTime := queryTime.Unix() - 60*24*60
+func (db *GormInterface) QueryClientSessionData(startTime int64, endTime int64, data interface{}) error {
+	dbTemp := db.gormDB.Where("createTimestamp >= ? AND createTimestamp <= ? AND pkgName = ?", startTime, endTime, "cc.coolline.client").
+		Order("id").Order("createTimestamp").Find(data)
+	if dbTemp.Error != nil {
+		return dbTemp.Error
+	}
+	return nil
+}
 
-	dbTemp := db.gormDB.Raw(SQLStr, preTime, queryTime.Unix(), preTime, queryTime.Unix()).Scan(data)
+func (db *GormInterface) QueryClientConnDataByTime(tableName string, data interface{}) error {
+	dbTemp := db.gormDB.Table(tableName).Where("pkgName = ?", "cc.coolline.client").
+		Order("id").Order("createTimestamp").Find(data)
+	if dbTemp.Error != nil {
+		return dbTemp.Error
+	}
+	return nil
+}
+
+func (db *GormInterface) QueryClientConnDataByID(tableName string, sessionID string, data interface{}) error {
+	dbTemp := db.gormDB.Table(tableName).Where("sessionId = ?", sessionID).
+		Order("id").Order("createTimestamp").Find(data)
 	if dbTemp.Error != nil {
 		return dbTemp.Error
 	}
@@ -130,13 +159,4 @@ func (db *GormInterface) Query(startTime time.Time, data interface{}) error {
 
 func (db *GormInterface) Close() {
 	db.gormDB.Close()
-}
-
-func (db *GormInterface) BuildSQL(startTime time.Time) string {
-	nextTime := startTime.Add(time.Minute * 24 * 60)
-	nnTime := nextTime.Add(time.Minute * 24 * 60)
-
-	sql := strings.Replace(SQLStr, "?", "%d", -1)
-	sql = fmt.Sprintf(sql, startTime.Unix(), nextTime.Unix(), startTime.Unix(), nextTime.Unix(), nextTime.Unix(), nnTime.Unix(), nextTime.Unix(), nnTime.Unix())
-	return sql
 }
