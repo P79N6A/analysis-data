@@ -3,14 +3,16 @@ package main
 import (
 	// "encoding/json"
 	"fmt"
+	"github.com/analysis-data/analysisMail/aliyun"
 	"github.com/analysis-data/analysisMail/common"
 	"github.com/analysis-data/analysisMail/db"
-	"github.com/analysis-data/analysisMail/mail"
+	// "github.com/analysis-data/analysisMail/mail"
 	"os"
 	"time"
 )
 
 var userSessionData map[string][]common.ClientSessionAnalysisData
+var sessionAnalysis map[string]*common.ClientSessionAnalysisData
 
 func main() {
 	startFunctionTimer(process)
@@ -38,7 +40,7 @@ func process() {
 
 	queryTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	preTime := queryTime.Unix() - 60*24*60
-	fmt.Println("query time: ", common.TimeFormat(queryTime))
+	fmt.Println("query time: ", common.TimeFormat(queryTime), " from: ", preTime, " to: ", queryTime.Unix())
 
 	var analysisData []common.AnalysisData
 	err = dbHandle.Query(preTime, queryTime.Unix(), &analysisData)
@@ -47,16 +49,38 @@ func process() {
 		return
 	}
 
-	var sessionData []common.ClientSessionData
-	err = dbHandle.QueryClientSessionData(preTime, queryTime.Unix(), &sessionData)
-	if err != nil {
-		fmt.Println("QueryClientSessionData db fail error: ", err)
-		return
+	dbHandle.Close()
+
+	// var sessionData []common.ClientSessionData
+	// err = dbHandle.QueryClientSessionData(preTime, queryTime.Unix(), &sessionData)
+	// if err != nil {
+	// 	fmt.Println("QueryClientSessionData db fail error: ", err)
+	// 	return
+	// }
+	client := aliyun.NewClient(runMode)
+
+	offset := 0
+
+	// 处理session数据
+	sessionAnalysis = map[string]*common.ClientSessionAnalysisData{}
+	for {
+		sessionData, err := client.GetSessionData(preTime, queryTime.Unix(), int64(100), int64(offset))
+		if err != nil {
+			fmt.Println("GetSessionData error: ", err)
+			return
+		}
+
+		analysisSeesionData(sessionData)
+		offset += len(sessionData)
+		if len(sessionData) < 100 {
+			break
+		}
 	}
 
-	analysisSeesionData(common.TimeFormatDateFromUnix(preTime), sessionData, dbHandle)
+	// 处理conn数据
+	queryAndAnalysisConnData(client, preTime, queryTime.Unix())
 
-	dbHandle.Close()
+	analysisUserData()
 
 	for idx, userData := range analysisData {
 		mapUserData, ok := userSessionData[userData.UserName]
@@ -74,8 +98,13 @@ func process() {
 				analysisData[idx].LastConnectTime = tempData.StartTime
 			}
 
-			startTime := tempData.Conns[0].ConnCreateTime
-			endTime := tempData.Conns[0].ConnCloseTime
+			startTime := tempData.EndTime * 1000
+			endTime := tempData.StartTime
+
+			if len(tempData.Conns) == 0 {
+				startTime = 0
+				endTime = 0
+			}
 
 			for _, tempConnData := range tempData.Conns {
 				if startTime > tempConnData.ConnCreateTime {
@@ -87,7 +116,7 @@ func process() {
 				}
 			}
 
-			analysisData[idx].UseTime = (endTime - startTime) / 1000
+			analysisData[idx].UseTime += (endTime - startTime) / 1000
 		}
 
 	}
@@ -102,32 +131,24 @@ func process() {
 		return
 	}
 
-	err = mail.Upload(filePath)
-	if err != nil {
-		fmt.Println("Upload file error: ", err.Error())
-		return
-	}
+	// err = mail.Upload(filePath)
+	// if err != nil {
+	// 	fmt.Println("Upload file error: ", err.Error())
+	// 	return
+	// }
 
-	err = mail.SendMessage(filePath)
-	if err != nil {
-		fmt.Println("SendMessage error: ", err.Error())
-	}
+	// err = mail.SendMessage(filePath)
+	// if err != nil {
+	// 	fmt.Println("SendMessage error: ", err.Error())
+	// }
+
+	fmt.Println("task complete success")
 }
 
-func analysisSeesionData(date string, datas []common.ClientSessionData, dbHandle *db.GormInterface) {
-	sessionAnalysis := map[string]*common.ClientSessionAnalysisData{}
-
+func analysisSeesionData(datas []common.ClientSessionData) {
 	for _, tempData := range datas {
 		storeData, ok := sessionAnalysis[tempData.ID]
 		if !ok {
-			var connAnalysisData []common.ClientConnAnalysisData
-			var connData []common.ClientConnData
-			fmt.Println("start query ", "tp_client_conn"+date, "session: ", tempData.ID)
-			err := dbHandle.QueryClientConnDataByID("tp_client_conn"+date, tempData.ID, &connData)
-			if err == nil {
-				connAnalysisData = analysisConnData(connData)
-			}
-
 			storeData = &common.ClientSessionAnalysisData{
 				UserName:     tempData.UserName,
 				UserDevice:   tempData.UserDevice,
@@ -139,7 +160,6 @@ func analysisSeesionData(date string, datas []common.ClientSessionData, dbHandle
 				RemoteOutput: tempData.RemoteOutput,
 				StartTime:    tempData.CreateTimestamp,
 				EndTime:      tempData.CreateTimestamp,
-				Conns:        connAnalysisData,
 			}
 			sessionAnalysis[tempData.ID] = storeData
 		} else {
@@ -164,7 +184,9 @@ func analysisSeesionData(date string, datas []common.ClientSessionData, dbHandle
 			}
 		}
 	}
+}
 
+func analysisUserData() {
 	userSessionData = map[string][]common.ClientSessionAnalysisData{}
 	for _, tempData := range sessionAnalysis {
 		_, ok := userSessionData[tempData.UserName]
@@ -178,14 +200,65 @@ func analysisSeesionData(date string, datas []common.ClientSessionData, dbHandle
 	}
 }
 
-func analysisConnData(datas []common.ClientConnData) []common.ClientConnAnalysisData {
-	var connData []common.ClientConnAnalysisData
+func queryAndAnalysisConnData(client *aliyun.AliyunClient, from, to int64) {
+	for key, tempSession := range sessionAnalysis {
+		fmt.Println("start query ", " tp_client_conn", " user: ", tempSession.UserName, " session: ", key)
 
-	connAnalysis := map[string]*common.ClientConnAnalysisData{}
+		// err := dbHandle.QueryClientConnDataByID("tp_client_conn"+date, tempData.ID, &connData)
+		// if err == nil {
+		// 	connAnalysisData = analysisConnData(connData)
+		// }
+		offset := 0
+		var connAnalysisData []common.ClientConnAnalysisData
+		for {
+			connData, err := client.GetConnData(from, to, key, int64(100), int64(offset))
+			if err != nil {
+				fmt.Println("GetConnData: ", key, " error: ", err)
+				return
+			}
+			tempData := connAnalysisData
+
+			count := len(connData)
+			offset += count
+
+			if count > 0 {
+				connAnalysisData = analysisConnData(connData, tempData)
+			}
+			if count < 100 {
+				break
+			}
+		}
+
+		tempSession.Conns = connAnalysisData
+	}
+}
+
+func analysisConnData(datas []common.ClientConnData, connsData []common.ClientConnAnalysisData) []common.ClientConnAnalysisData {
+	var analysisData []common.ClientConnAnalysisData
 	for _, tempData := range datas {
-		storeData, ok := connAnalysis[tempData.ID]
-		if !ok {
-			storeData = &common.ClientConnAnalysisData{
+		isExist := false
+		for _, storeData := range connsData {
+			if storeData.ID == tempData.ID {
+				if storeData.RemoteInput < tempData.RemoteInput {
+					storeData.RemoteInput = tempData.RemoteInput
+				}
+
+				if storeData.RemoteOutput < tempData.RemoteOutput {
+					storeData.RemoteOutput = tempData.RemoteOutput
+				}
+
+				if storeData.ConnCloseTime < tempData.ConnCloseTime {
+					storeData.ConnCloseTime = tempData.ConnCloseTime
+				}
+
+				analysisData = append(analysisData, storeData)
+				isExist = true
+				break
+			}
+		}
+
+		if !isExist {
+			storeData := common.ClientConnAnalysisData{
 				ID:             tempData.ID,
 				RemoteInput:    tempData.RemoteInput,
 				RemoteOutput:   tempData.RemoteOutput,
@@ -195,28 +268,12 @@ func analysisConnData(datas []common.ClientConnData) []common.ClientConnAnalysis
 				ConnCreateTime: tempData.ConnCreateTime,
 				ConnCloseTime:  tempData.ConnCloseTime,
 			}
-
-			connAnalysis[tempData.ID] = storeData
-		} else {
-			if storeData.RemoteInput < tempData.RemoteInput {
-				storeData.RemoteInput = tempData.RemoteInput
-			}
-
-			if storeData.RemoteOutput < tempData.RemoteOutput {
-				storeData.RemoteOutput = tempData.RemoteOutput
-			}
-
-			if storeData.ConnCloseTime < tempData.ConnCloseTime {
-				storeData.ConnCloseTime = tempData.ConnCloseTime
-			}
+			analysisData = append(analysisData, storeData)
 		}
+
 	}
 
-	for _, tempData := range connAnalysis {
-		connData = append(connData, *tempData)
-	}
-
-	return connData
+	return analysisData
 }
 
 func startFunctionTimer(f func()) {

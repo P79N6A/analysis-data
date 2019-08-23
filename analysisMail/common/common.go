@@ -66,17 +66,17 @@ type ClientSessionAnalysisData struct {
 }
 
 type ClientSessionData struct {
-	UserName        string `gorm:"column:userName"`
-	UserDevice      string `gorm:"column:userDevice"`
-	ID              string `gorm:"column:id"`
-	Finished        string `gorm:"column:finished"`
-	PkgName         string `gorm:"column:pkgName"`
-	AppVersion      string `gorm:"column:appVersion"`
-	SelectRouter    string `gorm:"column:selectRouter"`
-	RemoteInput     int32  `gorm:"column:remoteInput"`
-	RemoteOutput    int32  `gorm:"column:remoteOutput"`
-	Established     int8   `gorm:"column:established"`
-	CreateTimestamp int64  `gorm:"column:createTimestamp"`
+	UserName        string `json:"userName" gorm:"column:userName"`
+	UserDevice      string `json:"userDevice" gorm:"column:userDevice"`
+	ID              string `json:"id" gorm:"column:id"`
+	Finished        string `json:"finished" gorm:"column:finished"`
+	PkgName         string `json:"pkgName" gorm:"column:pkgName"`
+	AppVersion      string `json:"appVersion" gorm:"column:appVersion"`
+	SelectRouter    string `json:"selectRouter" gorm:"column:selectRouter"`
+	RemoteInput     int32  `json:"remoteInput" gorm:"column:remoteInput"`
+	RemoteOutput    int32  `json:"remoteOutput" gorm:"column:remoteOutput"`
+	Established     int8   `json:"established" gorm:"column:established"`
+	CreateTimestamp int64  `json:"__tag__:__receive_time__" gorm:"column:createTimestamp"`
 }
 
 func (ClientSessionData) TableName() string {
@@ -84,20 +84,20 @@ func (ClientSessionData) TableName() string {
 }
 
 type ClientConnData struct {
-	UserName        string `gorm:"column:userName"`
-	UserDevice      string `gorm:"column:userDevice"`
-	ID              string `gorm:"column:id"`
-	SessionID       string `gorm:"column:sessionId"`
-	Finished        string `gorm:"column:finished"`
-	RemoteInput     int32  `gorm:"column:remoteInput"`
-	RemoteOutput    int32  `gorm:"column:remoteOutput"`
-	ViaUserName     string `gorm:"column:viaUserName"`
-	ViaUserDevice   string `gorm:"column:viaUserDevice"`
-	TargetAddress   string `gorm:"column:targetAddress"`
-	ConnEstablished int8   `gorm:"column:connEstablished"`
-	ConnCreateTime  int64  `gorm:"column:connCreateTime"`
-	ConnCloseTime   int64  `gorm:"column:connCloseTime"`
-	CreateTimestamp int64  `gorm:"column:createTimestamp"`
+	UserName        string `json:"userName" gorm:"column:userName"`
+	UserDevice      string `json:"userDevice" gorm:"column:userDevice"`
+	ID              string `json:"id" gorm:"column:id"`
+	SessionID       string `json:"sessionId" gorm:"column:sessionId"`
+	Finished        string `json:"finished" gorm:"column:finished"`
+	RemoteInput     int32  `json:"remoteInput" gorm:"column:remoteInput"`
+	RemoteOutput    int32  `json:"remoteOutput" gorm:"column:remoteOutput"`
+	ViaUserName     string `json:"viaUserName" gorm:"column:viaUserName"`
+	ViaUserDevice   string `json:"viaUserDevice" gorm:"column:viaUserDevice"`
+	TargetAddress   string `json:"targetAddress" gorm:"column:targetAddress"`
+	ConnEstablished int8   `json:"connEstablished" gorm:"column:connEstablished"`
+	ConnCreateTime  int64  `json:"connCreateTime" gorm:"column:connCreateTime"`
+	ConnCloseTime   int64  `json:"connCloseTime" gorm:"column:connCloseTime"`
+	CreateTimestamp int64  `json:"__tag__:__receive_time__" gorm:"column:createTimestamp"`
 }
 
 func WriteDataToFile(pathFile string, data []AnalysisData) error {
