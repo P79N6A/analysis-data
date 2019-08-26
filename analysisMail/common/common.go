@@ -43,8 +43,8 @@ type AnalysisData struct {
 
 type ClientConnAnalysisData struct {
 	ID             string
-	RemoteInput    int32
-	RemoteOutput   int32
+	RemoteInput    int64
+	RemoteOutput   int64
 	ViaUserName    string
 	ViaUserDevice  string
 	TargetAddress  string
@@ -58,8 +58,8 @@ type ClientSessionAnalysisData struct {
 	PkgName      string
 	AppVersion   string
 	SelectRouter string
-	RemoteInput  int32
-	RemoteOutput int32
+	RemoteInput  int64
+	RemoteOutput int64
 	StartTime    int64
 	EndTime      int64
 	Conns        []ClientConnAnalysisData
@@ -73,8 +73,8 @@ type ClientSessionData struct {
 	PkgName         string `json:"pkgName" gorm:"column:pkgName"`
 	AppVersion      string `json:"appVersion" gorm:"column:appVersion"`
 	SelectRouter    string `json:"selectRouter" gorm:"column:selectRouter"`
-	RemoteInput     int32  `json:"remoteInput" gorm:"column:remoteInput"`
-	RemoteOutput    int32  `json:"remoteOutput" gorm:"column:remoteOutput"`
+	RemoteInput     int64  `json:"remoteInput" gorm:"column:remoteInput"`
+	RemoteOutput    int64  `json:"remoteOutput" gorm:"column:remoteOutput"`
 	Established     int8   `json:"established" gorm:"column:established"`
 	CreateTimestamp int64  `json:"__tag__:__receive_time__" gorm:"column:createTimestamp"`
 }
@@ -89,8 +89,8 @@ type ClientConnData struct {
 	ID              string `json:"id" gorm:"column:id"`
 	SessionID       string `json:"sessionId" gorm:"column:sessionId"`
 	Finished        string `json:"finished" gorm:"column:finished"`
-	RemoteInput     int32  `json:"remoteInput" gorm:"column:remoteInput"`
-	RemoteOutput    int32  `json:"remoteOutput" gorm:"column:remoteOutput"`
+	RemoteInput     int64  `json:"remoteInput" gorm:"column:remoteInput"`
+	RemoteOutput    int64  `json:"remoteOutput" gorm:"column:remoteOutput"`
 	ViaUserName     string `json:"viaUserName" gorm:"column:viaUserName"`
 	ViaUserDevice   string `json:"viaUserDevice" gorm:"column:viaUserDevice"`
 	TargetAddress   string `json:"targetAddress" gorm:"column:targetAddress"`
