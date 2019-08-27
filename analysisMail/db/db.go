@@ -13,85 +13,90 @@ UU.createTime AS registerTime,
 UU.userId,
 UU.left_nu,
 UU.add_nu,
-UU.change_nu
+UU.change_nu,
+UU.isVip,
+UU.vipExpireDate 
 FROM
 (
 SELECT
 	userName,
 	deviceid,
-	(case WHEN loginType = 'facebook' 
-	OR loginType = 'google' 
-	OR loginType = 'mail' 
-	OR loginType = 'login_facebook' 
-	OR loginType = 'login_google' 
-	OR loginType = 'login_mail' THEN
-		'否' ELSE '是' 
-	END 
-	) AS isGuest,
-	countryZh,
-	appVersion,
-	pkgName 
-FROM
 	(
-	SELECT
-		userName,
-		deviceid,
-		loginType,
-		createTimestamp,
-		countryZh,
-		appVersion,
-		pkgName 
-	FROM
-		sys_login 
-	WHERE
-		pkgName = 'cc.coolline.client' 
-		AND createTimestamp >= ?
-		AND createTimestamp <= ? 
-	ORDER BY
-		createTimestamp DESC 
-		LIMIT 999999 
-	) T 
-GROUP BY
-	userName 
-) origin
-LEFT JOIN (
-SELECT
-	createTime,
-	U.userId,
-	U.userName,
-	I.usageCount,
-	R.left_nu,
-	R.change_nu,
-	R.add_nu 
-FROM
-	( SELECT createTime, userName, userId FROM sys_user WHERE pkgName = 'cc.coolline.client' ) U
-	LEFT JOIN ( SELECT userId, usageCount FROM sys_invitation_code ) I ON I.userId = U.userId
-	LEFT JOIN (
-	SELECT
-		userName,
-		userId,
-		left_nu,
-		change_nu,
-		add_nu 
-	FROM
-		( SELECT self_address, sum( change_nu ) AS left_nu FROM ws_user_transaction_record GROUP BY self_address ) T
-		LEFT JOIN ( SELECT userName, address, userId FROM sys_user_key ) S ON S.address = T.self_address
-		LEFT JOIN ( SELECT self_address as user_address, sum( change_nu ) AS add_nu FROM ws_user_transaction_record WHERE event_code != 'using' GROUP BY self_address ) TP ON TP.user_address = T.self_address
+	CASE
+			
+			WHEN loginType = 'facebook' 
+			OR loginType = 'google' 
+			OR loginType = 'mail' 
+			OR loginType = 'login_facebook' 
+			OR loginType = 'login_google' 
+			OR loginType = 'login_mail' THEN
+				'否' ELSE '是' 
+			END 
+			) AS isGuest,
+			countryZh,
+			appVersion,
+			pkgName 
+		FROM
+			(
+			SELECT
+				userName,
+				deviceid,
+				loginType,
+				createTimestamp,
+				countryZh,
+				appVersion,
+				pkgName 
+			FROM
+				sys_login 
+			WHERE
+				pkgName = 'cc.coolline.client' 
+				AND createTimestamp >= ? 
+				AND createTimestamp <= ?
+			ORDER BY
+				createTimestamp DESC 
+				LIMIT 999999 
+			) T 
+		GROUP BY
+			userName 
+		) origin
 		LEFT JOIN (
 		SELECT
-			self_address,
-			sum( change_nu ) AS change_nu 
+			createTime,
+			U.userId,
+			U.userName,
+			I.usageCount,
+			R.left_nu,
+			R.change_nu,
+			R.add_nu,
+			R.isVip,
+			R.vipExpireDate 
 		FROM
-			ws_user_transaction_record 
-		WHERE
-			create_time >= FROM_UNIXTIME(?) 
-			AND create_time <= FROM_UNIXTIME(?)
-			AND event_code = 'using' 
-		GROUP BY
-			self_address 
-		) L ON L.self_address = T.self_address 
-	) R ON R.userId = U.userId 
-) UU ON UU.userName = origin.userName `
+			( SELECT createTime, userName, userId FROM sys_user WHERE pkgName = 'cc.coolline.client' ) U
+			LEFT JOIN ( SELECT userId, usageCount FROM sys_invitation_code ) I ON I.userId = U.userId
+			LEFT JOIN (
+			SELECT
+				userName,
+				userId,
+				left_nu,
+				change_nu,
+				add_nu,
+				( CASE WHEN now( ) < vipExpireDate THEN '是' ELSE '否' END ) AS isVip,
+				( CASE WHEN now( ) < vipExpireDate THEN vipExpireDate ELSE '' END ) AS vipExpireDate
+			FROM
+				(
+				SELECT
+					self_address,
+					sum( change_nu ) AS left_nu,
+					sum( CASE WHEN event_code = 'using' AND create_time >= FROM_UNIXTIME( ? ) AND create_time <= FROM_UNIXTIME( ? ) THEN change_nu ELSE 0 END ) AS change_nu,
+					sum( CASE WHEN event_code != 'using' AND create_time >= FROM_UNIXTIME( ? ) AND create_time <= FROM_UNIXTIME( ? ) THEN change_nu ELSE 0 END ) AS add_nu 
+				FROM
+					( SELECT self_address, change_nu, event_code, create_time FROM ws_user_transaction_record ) origin 
+				GROUP BY
+					self_address 
+				) T
+				LEFT JOIN ( SELECT userName, address, userId, vipExpireDate FROM sys_user_key ) S ON S.address = T.self_address 
+			) R ON R.userId = U.userId 
+) UU ON UU.userName = origin.userName`
 
 type GormInterface struct {
 	gormDB *gorm.DB
@@ -123,7 +128,7 @@ func RegisterDB(runMode string) (*GormInterface, error) {
 }
 
 func (db *GormInterface) Query(startTime int64, endTime int64, data interface{}) error {
-	dbTemp := db.gormDB.Raw(SQLStr, startTime, endTime, startTime, endTime).Scan(data)
+	dbTemp := db.gormDB.Raw(SQLStr, startTime, endTime, startTime, endTime, startTime, endTime).Scan(data)
 	if dbTemp.Error != nil {
 		return dbTemp.Error
 	}
@@ -142,6 +147,15 @@ func (db *GormInterface) QueryClientSessionData(startTime int64, endTime int64, 
 func (db *GormInterface) QueryClientConnDataByTime(tableName string, data interface{}) error {
 	dbTemp := db.gormDB.Table(tableName).Where("pkgName = ?", "cc.coolline.client").
 		Order("id").Order("createTimestamp").Find(data)
+	if dbTemp.Error != nil {
+		return dbTemp.Error
+	}
+	return nil
+}
+
+func (db *GormInterface) QueryClientConnDataByCount(tableName string, count, offset int, data interface{}) error {
+	dbTemp := db.gormDB.Table(tableName).Where("pkgName = ?", "cc.coolline.client").
+		Limit(count).Offset(offset).Find(data)
 	if dbTemp.Error != nil {
 		return dbTemp.Error
 	}

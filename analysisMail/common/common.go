@@ -2,7 +2,9 @@ package common
 
 import (
 	"encoding/csv"
+	"fmt"
 	"os"
+	"reflect"
 	"strconv"
 	"time"
 )
@@ -23,22 +25,25 @@ func TimeFormatDateFromUnix(cur_time int64) string {
 }
 
 type AnalysisData struct {
-	UserName        string `gorm:"column:userName"`
-	DeviceID        string `gorm:"column:deviceid"`
-	IsGuest         string `gorm:"column:isGuest"`
-	CountryZh       string `gorm:"column:countryZh"`
-	Location        string `gorm:"column:location"`
-	AppVersion      string `gorm:"column:appVersion"`
-	PkgName         string `gorm:"column:pkgName"`
-	RegisterTime    string `gorm:"column:registerTime"`
-	InvitationCount string `gorm:"column:invitationCount"`
-	AddNU           string `gorm:"column:add_nu"`
-	LeftNU          string `gorm:"column:left_nu"`
-	ChangeNU        string `gorm:"column:change_nu"`
-	ConnectTime     int64  `gorm:"column:connect_time"`
-	ConnectCount    int    `gorm:"column:connect_count"`
-	UseTime         int64  `gorm:"column:use_time"`
-	LastConnectTime int64
+	UserName          string `json:"userName" gorm:"column:userName"`
+	DeviceID          string `json:"deviceId" gorm:"column:deviceid"`
+	IsGuest           string `json:"isGuest" gorm:"column:isGuest"`
+	CountryZh         string `json:"countryZh" gorm:"column:countryZh"`
+	Location          string `json:"location" gorm:"column:location"`
+	AppVersion        string `json:"appVersion" gorm:"column:appVersion"`
+	PkgName           string `json:"pkgName" gorm:"column:pkgName"`
+	RegisterTime      string `json:"registerTime" gorm:"column:registerTime"`
+	InvitationCount   string `json:"invitationCount" gorm:"column:invitationCount"`
+	AddNU             string `json:"add_nu" gorm:"column:add_nu"`
+	LeftNU            string `json:"left_nu" gorm:"column:left_nu"`
+	ChangeNU          string `json:"change_nu" gorm:"column:change_nu"`
+	ConnectTime       int64  `json:"connect_time" gorm:"column:connect_time"`
+	ConnectCount      int    `json:"connect_count" gorm:"column:connect_count"`
+	UseTime           int64  `json:"use_time" gorm:"column:use_time"`
+	IsVip             string `json:"isVip" gorm:"column:isVip"`
+	VipStartDate      string `json:"vipStartDate" gorm:"column:vipStartDate"`
+	VipExpirationDate string `json:"vipExpireDate" gorm:"column:vipExpireDate"`
+	LastConnectTime   int64
 }
 
 type ClientConnAnalysisData struct {
@@ -52,17 +57,19 @@ type ClientConnAnalysisData struct {
 	ConnCloseTime  int64
 }
 type ClientSessionAnalysisData struct {
-	UserName     string
-	UserDevice   string
-	ID           string
-	PkgName      string
-	AppVersion   string
-	SelectRouter string
-	RemoteInput  int64
-	RemoteOutput int64
-	StartTime    int64
-	EndTime      int64
-	Conns        []ClientConnAnalysisData
+	UserName      string
+	UserDevice    string
+	ID            string
+	PkgName       string
+	AppVersion    string
+	SelectRouter  string
+	RemoteInput   int64
+	RemoteOutput  int64
+	StartTime     int64
+	EndTime       int64
+	ConnBeginTime int64
+	ConnEndTime   int64
+	Conns         []ClientConnAnalysisData
 }
 
 type ClientSessionData struct {
@@ -76,6 +83,7 @@ type ClientSessionData struct {
 	RemoteInput     int64  `json:"remoteInput" gorm:"column:remoteInput"`
 	RemoteOutput    int64  `json:"remoteOutput" gorm:"column:remoteOutput"`
 	Established     int8   `json:"established" gorm:"column:established"`
+	EnableTime      int64  `json:"enableTime" gorm:"column:enableTime"`
 	CreateTimestamp int64  `json:"__tag__:__receive_time__" gorm:"column:createTimestamp"`
 }
 
@@ -116,33 +124,64 @@ func WriteDataToFile(pathFile string, data []AnalysisData) error {
 
 	f.WriteString("\xEF\xBB\xBF")
 	w := csv.NewWriter(f)
-	title := []string{
-		"userName",
-		"deviceId",
-		"isGuest",
-		"countryZh",
-		"location",
-		"appVersion",
-		"pkgName",
-		"registerTime",
-		"invitationCount",
-		"add_nu",
-		"left_nu",
-		"change_nu",
-		"connect_time",
-		"connect_count",
-		"use_time",
+
+	title := []string{}
+
+	example := &AnalysisData{}
+	rt := reflect.TypeOf(example).Elem()
+	for i := 0; i < rt.NumField(); i++ {
+		field := rt.Field(i)
+
+		tempValue := field.Tag.Get("json")
+		if tempValue == "" {
+			continue
+		}
+		title = append(title, tempValue)
 	}
+
+	// title := []string{
+	// 	"userName",
+	// 	"deviceId",
+	// 	"isGuest",
+	// 	"countryZh",
+	// 	"location",
+	// 	"appVersion",
+	// 	"pkgName",
+	// 	"registerTime",
+	// 	"invitationCount",
+	// 	"add_nu",
+	// 	"left_nu",
+	// 	"change_nu",
+	// 	"connect_time",
+	// 	"connect_count",
+	// 	"use_time",
+	// }
 
 	w.Write(title)
 
 	for _, value := range data {
-		connectTime := strconv.FormatInt(value.ConnectTime, 10)
-		connectCount := strconv.FormatInt(int64(value.ConnectCount), 10)
-		useTime := strconv.FormatInt(value.UseTime, 10)
-		record := []string{value.UserName, value.DeviceID, value.IsGuest, value.CountryZh, value.Location, value.AppVersion, value.PkgName, value.RegisterTime,
-			value.InvitationCount, value.AddNU, value.LeftNU, value.ChangeNU, connectTime, connectCount, useTime,
+		var record []string
+		newValue := reflect.ValueOf(value)
+		for i := 0; i < newValue.NumField(); i++ {
+			field := newValue.Field(i)
+			var changeValue string
+			switch field.Kind() {
+			case reflect.Int, reflect.Int32, reflect.Int64, reflect.Int8:
+				changeValue = strconv.FormatInt(field.Int(), 10)
+			case reflect.String:
+				changeValue = field.String()
+			default:
+				fmt.Println("write file type unKnow: ", field.Kind())
+			}
+
+			record = append(record, changeValue)
 		}
+		// connectTime := strconv.FormatInt(value.ConnectTime, 10)
+		// connectCount := strconv.FormatInt(int64(value.ConnectCount), 10)
+		// useTime := strconv.FormatInt(value.UseTime, 10)
+		// record := []string{value.UserName, value.DeviceID, value.IsGuest, value.CountryZh, value.Location, value.AppVersion, value.PkgName, value.RegisterTime,
+		// 	value.InvitationCount, value.AddNU, value.LeftNU, value.ChangeNU, connectTime, connectCount, useTime,
+		// }
 		w.Write(record)
 	}
 	w.Flush()

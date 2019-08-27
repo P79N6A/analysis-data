@@ -6,7 +6,7 @@ import (
 	"github.com/analysis-data/analysisMail/aliyun"
 	"github.com/analysis-data/analysisMail/common"
 	"github.com/analysis-data/analysisMail/db"
-	"github.com/analysis-data/analysisMail/mail"
+	// "github.com/analysis-data/analysisMail/mail"
 	"os"
 	"time"
 )
@@ -49,36 +49,48 @@ func process() {
 		return
 	}
 
+	fmt.Println("Query login info cost time ms: ", (time.Now().UnixNano()-now.UnixNano())/1000/1000)
+	now = time.Now()
+
+	var sessionData []common.ClientSessionData
+	err = dbHandle.QueryClientSessionData(preTime, queryTime.Unix(), &sessionData)
+	if err != nil {
+		fmt.Println("QueryClientSessionData db fail error: ", err)
+		return
+	}
+
+	fmt.Println("Query session info cost time ms: ", (time.Now().UnixNano()-now.UnixNano())/1000/1000)
+
 	dbHandle.Close()
-
-	// var sessionData []common.ClientSessionData
-	// err = dbHandle.QueryClientSessionData(preTime, queryTime.Unix(), &sessionData)
-	// if err != nil {
-	// 	fmt.Println("QueryClientSessionData db fail error: ", err)
-	// 	return
-	// }
-	client := aliyun.NewClient(runMode)
-
-	offset := 0
 
 	// 处理session数据
 	sessionAnalysis = map[string]*common.ClientSessionAnalysisData{}
-	for {
-		sessionData, err := client.GetSessionData(preTime, queryTime.Unix(), int64(100), int64(offset))
-		if err != nil {
-			fmt.Println("GetSessionData error: ", err)
-			return
-		}
+	analysisSeesionData(sessionData)
+	/*aliyun chuli */
+	/* 	client := aliyun.NewClient(runMode)
 
-		analysisSeesionData(sessionData)
-		offset += len(sessionData)
-		if len(sessionData) < 100 {
-			break
-		}
-	}
+	   	offset := 0
 
-	// 处理conn数据
-	queryAndAnalysisConnData(client, preTime, queryTime.Unix())
+	   	// 处理session数据
+	   	sessionAnalysis = map[string]*common.ClientSessionAnalysisData{}
+	   	for {
+	   		sessionData, err := client.GetSessionData(preTime, queryTime.Unix(), int64(100), int64(offset))
+	   		if err != nil {
+	   			fmt.Println("GetSessionData error: ", err)
+	   			return
+	   		}
+
+	   		analysisSeesionData(sessionData)
+	   		offset += len(sessionData)
+	   		if len(sessionData) < 100 {
+	   			break
+	   		}
+	   	}
+
+	   	// 处理conn数据
+	   	queryAndAnalysisConnData(client, preTime, queryTime.Unix())
+
+	*/
 
 	analysisUserData()
 
@@ -91,38 +103,35 @@ func process() {
 		analysisData[idx].ConnectCount = len(mapUserData)
 
 		for _, tempData := range mapUserData {
-			analysisData[idx].ConnectTime += (tempData.EndTime - tempData.StartTime)
+			analysisData[idx].ConnectTime += (tempData.EndTime - tempData.StartTime/1000)
 
 			if analysisData[idx].LastConnectTime < tempData.StartTime {
 				analysisData[idx].Location = tempData.SelectRouter
 				analysisData[idx].LastConnectTime = tempData.StartTime
 			}
 
-			startTime := tempData.EndTime * 1000
-			endTime := tempData.StartTime
+			// startTime := tempData.EndTime * 1000
+			// endTime := tempData.StartTime
 
-			if len(tempData.Conns) == 0 {
-				startTime = 0
-				endTime = 0
-			}
+			// if len(tempData.Conns) == 0 {
+			// 	startTime = 0
+			// 	endTime = 0
+			// }
 
-			for _, tempConnData := range tempData.Conns {
-				if startTime > tempConnData.ConnCreateTime {
-					startTime = tempConnData.ConnCreateTime
-				}
+			// for _, tempConnData := range tempData.Conns {
+			// 	if startTime > tempConnData.ConnCreateTime {
+			// 		startTime = tempConnData.ConnCreateTime
+			// 	}
 
-				if endTime < tempConnData.ConnCloseTime {
-					endTime = tempConnData.ConnCloseTime
-				}
-			}
+			// 	if endTime < tempConnData.ConnCloseTime {
+			// 		endTime = tempConnData.ConnCloseTime
+			// 	}
+			// }
 
-			analysisData[idx].UseTime += (endTime - startTime) / 1000
+			// analysisData[idx].UseTime += (endTime - startTime) / 1000
 		}
 
 	}
-
-	// byt, _ := json.Marshal(analysisData)
-	// fmt.Println(string(byt[:]))
 
 	filePath := "userData" + common.TimeFormatDate(now) + ".xls"
 	err = common.WriteDataToFile(filePath, analysisData)
@@ -131,16 +140,19 @@ func process() {
 		return
 	}
 
-	err = mail.Upload(filePath)
-	if err != nil {
-		fmt.Println("Upload file error: ", err.Error())
-		return
-	}
+	// err = mail.Upload(filePath)
+	// if err != nil {
+	// 	fmt.Println("Upload file error: ", err.Error())
+	// 	return
+	// }
 
-	err = mail.SendMessage(filePath)
-	if err != nil {
-		fmt.Println("SendMessage error: ", err.Error())
-	}
+	// err = mail.SendMessage(filePath)
+	// if err != nil {
+	// 	fmt.Println("SendMessage error: ", err.Error())
+	// }
+
+	sessionAnalysis = map[string]*common.ClientSessionAnalysisData{}
+	userSessionData = map[string][]common.ClientSessionAnalysisData{}
 
 	fmt.Println("task complete success")
 }
@@ -158,7 +170,7 @@ func analysisSeesionData(datas []common.ClientSessionData) {
 				SelectRouter: tempData.SelectRouter,
 				RemoteInput:  tempData.RemoteInput,
 				RemoteOutput: tempData.RemoteOutput,
-				StartTime:    tempData.CreateTimestamp,
+				StartTime:    tempData.EnableTime,
 				EndTime:      tempData.CreateTimestamp,
 			}
 			sessionAnalysis[tempData.ID] = storeData
@@ -176,7 +188,7 @@ func analysisSeesionData(datas []common.ClientSessionData) {
 			}
 
 			if storeData.StartTime > tempData.CreateTimestamp {
-				storeData.StartTime = tempData.CreateTimestamp
+				storeData.StartTime = tempData.EnableTime
 			}
 
 			if storeData.EndTime < tempData.CreateTimestamp {
