@@ -6,7 +6,7 @@ import (
 	"github.com/analysis-data/analysisMail/aliyun"
 	"github.com/analysis-data/analysisMail/common"
 	"github.com/analysis-data/analysisMail/db"
-	// "github.com/analysis-data/analysisMail/mail"
+	"github.com/analysis-data/analysisMail/mail"
 	"os"
 	"time"
 )
@@ -140,16 +140,16 @@ func process() {
 		return
 	}
 
-	// err = mail.Upload(filePath)
-	// if err != nil {
-	// 	fmt.Println("Upload file error: ", err.Error())
-	// 	return
-	// }
+	err = mail.Upload(filePath)
+	if err != nil {
+		fmt.Println("Upload file error: ", err.Error())
+		return
+	}
 
-	// err = mail.SendMessage(filePath)
-	// if err != nil {
-	// 	fmt.Println("SendMessage error: ", err.Error())
-	// }
+	err = mail.SendMessage(filePath)
+	if err != nil {
+		fmt.Println("SendMessage error: ", err.Error())
+	}
 
 	sessionAnalysis = map[string]*common.ClientSessionAnalysisData{}
 	userSessionData = map[string][]common.ClientSessionAnalysisData{}
