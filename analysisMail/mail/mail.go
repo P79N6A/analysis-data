@@ -68,7 +68,7 @@ func SendMessage(filePath string) error {
 	}
 
 	mail := MessageData{
-		Topic:      "service_log",
+		Topic:      "daily_user_data",
 		SenderName: "每日用戶數據",
 		Title:      "每日用户数据",
 		Content:    "详见附件",
