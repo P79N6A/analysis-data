@@ -133,6 +133,9 @@ func process() {
 
 	}
 
+	sessionAnalysis = map[string]*common.ClientSessionAnalysisData{}
+	userSessionData = map[string][]common.ClientSessionAnalysisData{}
+
 	filePath := "userData" + common.TimeFormatDate(now) + ".xls"
 	err = common.WriteDataToFile(filePath, analysisData)
 	if err != nil {
@@ -150,9 +153,6 @@ func process() {
 	if err != nil {
 		fmt.Println("SendMessage error: ", err.Error())
 	}
-
-	sessionAnalysis = map[string]*common.ClientSessionAnalysisData{}
-	userSessionData = map[string][]common.ClientSessionAnalysisData{}
 
 	fmt.Println("task complete success")
 }

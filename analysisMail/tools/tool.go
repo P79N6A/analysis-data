@@ -2,24 +2,24 @@ package main
 
 import (
 	"fmt"
-	"github.com/analysis-data/analysisMail/common"
-	"github.com/analysis-data/analysisMail/db"
-	"time"
+	"github.com/analysis-data/analysisMail/mail"
+	"os"
 )
 
 func main() {
-	dbHandle, err := db.RegisterDB("prod")
+	date := os.Args[1]
+
+	filePath := "userData" + date + ".xls"
+	err := mail.Upload(filePath)
 	if err != nil {
-		fmt.Println("RegisterDB fail: error: ", err)
+		fmt.Println("Upload file error: ", err.Error())
 		return
 	}
 
-	nowTime := time.Now()
-	var sessionData []common.ClientSessionData
-	err = dbHandle.QueryClientSessionData(nowTime.Unix()-60*60*24, nowTime.Unix(), &sessionData)
+	err = mail.SendMessage(filePath)
 	if err != nil {
-		fmt.Println("QueryClientSessionData fail: error: ", err)
-		return
+		fmt.Println("SendMessage error: ", err.Error())
 	}
-	fmt.Println("query time: ", time.Now().UnixNano()-nowTime.UnixNano())
+
+	fmt.Println("task send mail complete success")
 }
