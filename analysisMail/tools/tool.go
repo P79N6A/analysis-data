@@ -9,7 +9,7 @@ import (
 func main() {
 	date := os.Args[1]
 
-	filePath := "userData" + date + ".xls"
+	filePath := "../userData" + date + ".xls"
 	err := mail.Upload(filePath)
 	if err != nil {
 		fmt.Println("Upload file error: ", err.Error())
