@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/analysis-data/utils"
 	"github.com/astaxie/beego/orm"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/analysis-data/analysisDns/common"
 )
 
 type Records struct {
@@ -27,13 +27,6 @@ func init() {
 var createTableSQl = "CREATE tp_share_conn_back like tp_share_conn"
 var querySQL = "SELECT T.userDevice, T.targetAddress FROM ( SELECT DISTINCT ( userDevice ) FROM `tp_share_conn_back20190424-20190430` WHERE userDevice != '' AND UNIX_TIMESTAMP(createTime) >= ? and UNIX_TIMESTAMP(createTime) <= ?) origin LEFT JOIN ( SELECT * FROM tp_share_conn WHERE closeReason = 'dns-error' AND targetAddress != '' AND UNIX_TIMESTAMP(createTime) >= ? and UNIX_TIMESTAMP(createTime) <= ?) T ON T.userDevice = origin.userDevice order by T.userDevice"
 
-// func CreateDataBack(from, to time.Time) error {
-// 	o := orm.NewOrm()
-// 	o.Using("climb")
-
-// 	o.
-// }
-
 func QueryData(from, to time.Time) (*Records, error) {
 	o := orm.NewOrm()
 	o.Using("climb")
@@ -43,9 +36,9 @@ func QueryData(from, to time.Time) (*Records, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	re := Records{Records: records}
-	err = common.WriteToFile("records.json", re)
+	err = utils.WriteToFile("records.json", re)
 	if err != nil {
 		return nil, err
 	}

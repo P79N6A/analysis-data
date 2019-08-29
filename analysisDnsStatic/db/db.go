@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/analysis-data/analysisDns-query/common"
+	"github.com/analysis-data/utils"
 	"github.com/astaxie/beego/orm"
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -43,7 +43,7 @@ func QueryData(startTime string) (*Records, error) {
 	}
 
 	re := Records{Records: records}
-	err = common.WriteToFile("records"+startTime+".json", re)
+	err = utils.WriteToFile("records"+startTime+".json", re)
 	if err != nil {
 		return nil, err
 	}

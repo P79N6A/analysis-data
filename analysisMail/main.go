@@ -7,6 +7,7 @@ import (
 	"github.com/analysis-data/analysisMail/common"
 	"github.com/analysis-data/analysisMail/db"
 	"github.com/analysis-data/analysisMail/mail"
+	"github.com/analysis-data/utils"
 	"os"
 	"time"
 )
@@ -40,7 +41,7 @@ func process() {
 
 	queryTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	preTime := queryTime.Unix() - 60*24*60
-	fmt.Println("query time: ", common.TimeFormat(queryTime), " from: ", preTime, " to: ", queryTime.Unix())
+	fmt.Println("query time: ", utils.TimeFormat(queryTime), " from: ", preTime, " to: ", queryTime.Unix())
 
 	var analysisData []common.AnalysisData
 	err = dbHandle.Query(preTime, queryTime.Unix(), &analysisData)

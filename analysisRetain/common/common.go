@@ -6,7 +6,6 @@ import (
 	// "io/ioutil"
 	"os"
 	"strconv"
-	"time"
 )
 
 type Record struct {
@@ -14,22 +13,6 @@ type Record struct {
 	CurFlow   float64 `json:"curFlow"`
 	NextLogin int     `json:"nextLogin"`
 	NextFlow  float64 `json:"nextFlow"`
-}
-
-func StringToTime(timeStr string) time.Time {
-	var duration time.Time
-	nowTime := time.Now()
-	nowTimeStr := nowTime.Format("2006-01-02 15:04:05Z07:00")
-
-	if len(timeStr) == len("2006-01-02 15:04:05") {
-		duration, _ = time.Parse("2006-01-02 15:04:05Z07:00", timeStr+nowTimeStr[len(nowTimeStr)-6:])
-	} else if len(timeStr) == len("2006-01-02 15:04") {
-		duration, _ = time.Parse("2006-01-02 15:04:05Z07:00", timeStr+":00"+nowTimeStr[len(nowTimeStr)-6:])
-	} else {
-		duration = time.Now()
-	}
-
-	return duration
 }
 
 func WriteDataToFile(pathFile string, data []Record) error {

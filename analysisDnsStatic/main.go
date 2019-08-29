@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/analysis-data/analysisDns-query/db"
+	"github.com/analysis-data/analysisDnsStatic/db"
 )
 
 func getTargetAddress(targetAddress string) (string, error) {

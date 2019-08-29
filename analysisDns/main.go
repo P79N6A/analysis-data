@@ -9,6 +9,7 @@ import (
 
 	"github.com/analysis-data/analysisDns/common"
 	"github.com/analysis-data/analysisDns/db"
+	"github.com/analysis-data/utils"
 )
 
 func getTargetAddress(targetAddress string) (string, error) {
@@ -108,9 +109,9 @@ func main() {
 
 		fromTime := time.Now()
 		endTime := time.Now()
-		fromTime, _ = common.ExchangeStringToTime(os.Args[2])
+		fromTime = utils.StringToTime(os.Args[2])
 		if len(os.Args) > 3 {
-			endTime, _ = common.ExchangeStringToTime(os.Args[3])
+			endTime = utils.StringToTime(os.Args[3])
 		}
 		records, err = db.QueryData(fromTime, endTime)
 		if err != nil {
@@ -131,7 +132,7 @@ func main() {
 		addAnalizyData(target, record.UserDevice)
 	}
 
-	common.WriteToFile("noPortRecord.json", noPortDatas)
+	utils.WriteToFile("noPortRecord.json", noPortDatas)
 	var data []common.AnalizyData
 
 	total := 0

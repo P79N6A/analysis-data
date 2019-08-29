@@ -9,11 +9,6 @@ import (
 	"time"
 )
 
-func TimeFormat(cur_time time.Time) string {
-	str := cur_time.Format("2006-01-02 15:04:05")
-	return str
-}
-
 func TimeFormatDate(cur_time time.Time) string {
 	str := cur_time.Format("20060102")
 	return str
@@ -139,24 +134,6 @@ func WriteDataToFile(pathFile string, data []AnalysisData) error {
 		title = append(title, tempValue)
 	}
 
-	// title := []string{
-	// 	"userName",
-	// 	"deviceId",
-	// 	"isGuest",
-	// 	"countryZh",
-	// 	"location",
-	// 	"appVersion",
-	// 	"pkgName",
-	// 	"registerTime",
-	// 	"invitationCount",
-	// 	"add_nu",
-	// 	"left_nu",
-	// 	"change_nu",
-	// 	"connect_time",
-	// 	"connect_count",
-	// 	"use_time",
-	// }
-
 	w.Write(title)
 
 	for _, value := range data {
@@ -176,12 +153,6 @@ func WriteDataToFile(pathFile string, data []AnalysisData) error {
 
 			record = append(record, changeValue)
 		}
-		// connectTime := strconv.FormatInt(value.ConnectTime, 10)
-		// connectCount := strconv.FormatInt(int64(value.ConnectCount), 10)
-		// useTime := strconv.FormatInt(value.UseTime, 10)
-		// record := []string{value.UserName, value.DeviceID, value.IsGuest, value.CountryZh, value.Location, value.AppVersion, value.PkgName, value.RegisterTime,
-		// 	value.InvitationCount, value.AddNU, value.LeftNU, value.ChangeNU, connectTime, connectCount, useTime,
-		// }
 		w.Write(record)
 	}
 	w.Flush()
